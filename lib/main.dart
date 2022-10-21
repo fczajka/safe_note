@@ -20,8 +20,37 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class Note extends StatelessWidget {
+class Note extends StatefulWidget {
   const Note({super.key});
+
+  @override
+  State<Note> createState() => _NoteState();
+}
+
+class _NoteState extends State<Note> {
+  final _storage = const FlutterSecureStorage();
+  final _noteController = TextEditingController();
+  String _note = "";
+
+  bool _isSet = false;
+
+  @override
+  void initState() {
+    super.initState();
+    getPass();
+  }
+
+  Future getPass() async {
+    String? note = await _storage.read(key: 'note');
+    if (note == null) {
+      _isSet = false;
+    } else {
+      _note = note;
+      _noteController.text = note;
+      _isSet = true;
+    }
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,13 +58,58 @@ class Note extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Safe Note'),
       ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text('Go back!'),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (_isSet) ...[
+              TextField(
+                controller: _noteController,
+                maxLines: 7,
+                decoration: const InputDecoration.collapsed(
+                  hintText: 'Enter your note here',
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _storage.write(key: 'note', value: _noteController.text);
+                  setState(() {
+                    _note = _noteController.text;
+                    _isSet = true;
+                  });
+                },
+                child: const Text('Save!'),
+              ),
+            ] else ...[
+              TextField(
+                controller: _noteController,
+                maxLines: 7,
+                decoration: const InputDecoration.collapsed(
+                  hintText: 'Enter your note here',
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  _storage.write(key: 'note', value: _noteController.text);
+                  setState(() {
+                    _note = _noteController.text;
+                    _isSet = true;
+                  });
+                },
+                child: const Text('Save!'),
+              ),
+            ]
+          ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Add your onPressed code here!
+        },
+        backgroundColor: Colors.blue,
+        child: const Icon(Icons.settings),
       ),
     );
   }
@@ -90,67 +164,63 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        if (_isSet) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: TextField(
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Enter p@\$\$w0rd',
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (_isSet) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: TextField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Enter p@\$\$w0rd',
+                ),
+                controller: myController,
               ),
-              controller: myController,
             ),
-          ),
-          ElevatedButton(
-              style: style,
-              child: const Text('Log in'),
-              onPressed: () {
-                if (myController.text == _password) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Note()),
-                  );
-                } else {
-                  print(_password);
-                  showDialog(
-                      context: context,
-                      builder: (context) {
-                        return const AlertDialog(
-                          content: Text("Wrong password"),
-                        );
-                      });
-                }
-              })
-        ] else ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: TextField(
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Set p@\$\$w0rd',
+            ElevatedButton(
+                style: style,
+                child: const Text('Log in'),
+                onPressed: () {
+                  if (myController.text == _password) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Note()),
+                    );
+                  } else {
+                    print(_password);
+                    showDialog(
+                        context: context,
+                        builder: (context) {
+                          return const AlertDialog(
+                            content: Text("Wrong password"),
+                          );
+                        });
+                  }
+                })
+          ] else ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: TextField(
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Set p@\$\$w0rd',
+                ),
+                controller: myController,
               ),
-              controller: myController,
             ),
-          ),
-          ElevatedButton(
-              style: style,
-              child: const Text('Set password'),
-              onPressed: () {
-                _storage.write(key: 'pass', value: myController.text);
-                setState(() {
-                  _password = myController.text;
-                  _isSet = true;
-                });
-              }),
+            ElevatedButton(
+                style: style,
+                child: const Text('Set password'),
+                onPressed: () {
+                  _storage.write(key: 'pass', value: myController.text);
+                  setState(() {
+                    _password = myController.text;
+                    _isSet = true;
+                  });
+                }),
+          ],
         ],
-      ]),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Add your onPressed code here!
-        },
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.settings),
       ),
     );
   }
