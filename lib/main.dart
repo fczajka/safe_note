@@ -20,6 +20,27 @@ class MyApp extends StatelessWidget {
   }
 }
 
+class Note extends StatelessWidget {
+  const Note({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Safe Note'),
+      ),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text('Go back!'),
+        ),
+      ),
+    );
+  }
+}
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
   final String title;
@@ -30,6 +51,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _storage = const FlutterSecureStorage();
+  String _password = "";
 
   bool _isSet = false;
 
@@ -50,6 +72,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (password == null) {
       _isSet = false;
     } else {
+      _password = password;
       _isSet = true;
     }
     setState(() {});
@@ -83,20 +106,21 @@ class _MyHomePageState extends State<MyHomePage> {
               style: style,
               child: const Text('Log in'),
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) {
-                    if (myController.text == "p@\$\$w0rd") {
-                      return const AlertDialog(
-                        content: Text("Correct password"),
-                      );
-                    } else {
-                      return const AlertDialog(
-                        content: Text("Wrong password"),
-                      );
-                    }
-                  },
-                );
+                if (myController.text == _password) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Note()),
+                  );
+                } else {
+                  print(_password);
+                  showDialog(
+                      context: context,
+                      builder: (context) {
+                        return const AlertDialog(
+                          content: Text("Wrong password"),
+                        );
+                      });
+                }
               })
         ] else ...[
           Padding(
@@ -115,6 +139,7 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 _storage.write(key: 'pass', value: myController.text);
                 setState(() {
+                  _password = myController.text;
                   _isSet = true;
                 });
               }),
