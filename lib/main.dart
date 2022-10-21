@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:crypt/crypt.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() {
@@ -30,7 +31,9 @@ class Note extends StatefulWidget {
 class _NoteState extends State<Note> {
   final _storage = const FlutterSecureStorage();
   final _noteController = TextEditingController();
-  String _note = "";
+  final ButtonStyle style = ElevatedButton.styleFrom(
+      textStyle: const TextStyle(fontSize: 20),
+      padding: const EdgeInsets.all(16));
 
   bool _isSet = false;
 
@@ -45,7 +48,6 @@ class _NoteState extends State<Note> {
     if (note == null) {
       _isSet = false;
     } else {
-      _note = note;
       _noteController.text = note;
       _isSet = true;
     }
@@ -73,10 +75,10 @@ class _NoteState extends State<Note> {
                 ),
               ),
               ElevatedButton(
+                style: style,
                 onPressed: () {
                   _storage.write(key: 'note', value: _noteController.text);
                   setState(() {
-                    _note = _noteController.text;
                     _isSet = true;
                   });
                 },
@@ -91,10 +93,10 @@ class _NoteState extends State<Note> {
                 ),
               ),
               ElevatedButton(
+                style: style,
                 onPressed: () {
                   _storage.write(key: 'note', value: _noteController.text);
                   setState(() {
-                    _note = _noteController.text;
                     _isSet = true;
                   });
                 },
@@ -182,13 +184,17 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: style,
                 child: const Text('Log in'),
                 onPressed: () {
-                  if (myController.text == _password) {
+                  if (Crypt.sha512(myController.text.trim(),
+                              rounds: 10000, salt: "BSMIsTheBest")
+                          .toString() ==
+                      _password) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const Note()),
                     );
+                    myController.text = "";
                   } else {
-                    print(_password);
+                    myController.text = "";
                     showDialog(
                         context: context,
                         builder: (context) {
@@ -213,9 +219,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: style,
                 child: const Text('Set password'),
                 onPressed: () {
-                  _storage.write(key: 'pass', value: myController.text);
+                  String newPassword = Crypt.sha512(myController.text.trim(),
+                          rounds: 10000, salt: "BSMIsTheBest")
+                      .toString();
+                  _storage.write(key: 'pass', value: newPassword);
                   setState(() {
-                    _password = myController.text;
+                    _password = newPassword;
+                    myController.text = "";
                     _isSet = true;
                   });
                 }),
