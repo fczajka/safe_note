@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:crypt/crypt.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:safe_note/views/home.dart';
-import 'package:safe_note/views/changePassword.dart';
 
 void main() {
   runApp(const MyApp());
