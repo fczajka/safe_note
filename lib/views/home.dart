@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:crypt/crypt.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:safe_note/views/note.dart';
+import 'package:safe_note/utils.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -13,30 +14,17 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final _storage = const FlutterSecureStorage();
-  String _password = "";
   bool _isSet = false;
 
   @override
   void initState() {
     super.initState();
-    getPass();
   }
 
   @override
   void dispose() {
     myController.dispose();
     super.dispose();
-  }
-
-  Future getPass() async {
-    String? password = await _storage.read(key: 'pass');
-    if (password == null) {
-      _isSet = false;
-    } else {
-      _password = password;
-      _isSet = true;
-    }
-    setState(() {});
   }
 
   final ButtonStyle style = ElevatedButton.styleFrom(
@@ -47,7 +35,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    getPass();
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -69,11 +56,13 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
                 style: style,
                 child: const Text('Log in'),
-                onPressed: () {
+                onPressed: () async {
+                  var pass = await _storage.read(key: "pass");
+                  var salt = await _storage.read(key: "salt");
                   if (Crypt.sha512(myController.text.trim(),
-                              rounds: 10000, salt: "BSMIsTheBest")
+                              rounds: 10000, salt: salt)
                           .toString() ==
-                      _password) {
+                      pass) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const Note()),
@@ -104,13 +93,14 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
                 style: style,
                 child: const Text('Set password'),
-                onPressed: () {
-                  String newPassword = Crypt.sha512(myController.text.trim(),
-                          rounds: 10000, salt: "BSMIsTheBest")
+                onPressed: () async {
+                  var localSalt = generateRandomString(32);
+                  var newPassword = Crypt.sha512(myController.text.trim(),
+                          rounds: 10000, salt: localSalt)
                       .toString();
-                  _storage.write(key: 'pass', value: newPassword);
+                  await _storage.write(key: 'pass', value: newPassword);
+                  await _storage.write(key: 'salt', value: localSalt);
                   setState(() {
-                    _password = newPassword;
                     myController.text = "";
                     _isSet = true;
                   });

@@ -21,10 +21,10 @@ class _NoteState extends State<Note> {
   @override
   void initState() {
     super.initState();
-    getPass();
+    getNote();
   }
 
-  Future getPass() async {
+  Future getNote() async {
     String? note = await _storage.read(key: 'note');
     if (note == null) {
       _isSet = false;
@@ -47,43 +47,23 @@ class _NoteState extends State<Note> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (_isSet) ...[
-              TextField(
-                controller: _noteController,
-                maxLines: 7,
-                decoration: const InputDecoration.collapsed(
-                  hintText: 'Enter your note here',
-                ),
+            TextField(
+              controller: _noteController,
+              maxLines: 7,
+              decoration: const InputDecoration.collapsed(
+                hintText: 'Enter your note here',
               ),
-              ElevatedButton(
-                style: style,
-                onPressed: () {
-                  _storage.write(key: 'note', value: _noteController.text);
-                  setState(() {
-                    _isSet = true;
-                  });
-                },
-                child: const Text('Save!'),
-              ),
-            ] else ...[
-              TextField(
-                controller: _noteController,
-                maxLines: 7,
-                decoration: const InputDecoration.collapsed(
-                  hintText: 'Enter your note here',
-                ),
-              ),
-              ElevatedButton(
-                style: style,
-                onPressed: () {
-                  _storage.write(key: 'note', value: _noteController.text);
-                  setState(() {
-                    _isSet = true;
-                  });
-                },
-                child: const Text('Save!'),
-              ),
-            ]
+            ),
+            ElevatedButton(
+              style: style,
+              onPressed: () {
+                _storage.write(key: 'note', value: _noteController.text);
+                setState(() {
+                  _isSet = true;
+                });
+              },
+              child: const Text('Save!'),
+            ),
           ],
         ),
       ),

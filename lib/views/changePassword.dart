@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:crypt/crypt.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:safe_note/utils.dart';
 
 class ChangePassword extends StatefulWidget {
   const ChangePassword({super.key});
@@ -14,8 +15,6 @@ class _ChangePasswordState extends State<ChangePassword> {
   final _passwordControllerFirst = TextEditingController();
   final _passwordControllerSecond = TextEditingController();
 
-  String _password = "";
-
   final ButtonStyle style = ElevatedButton.styleFrom(
       textStyle: const TextStyle(fontSize: 20),
       padding: const EdgeInsets.all(16));
@@ -23,12 +22,6 @@ class _ChangePasswordState extends State<ChangePassword> {
   @override
   void initState() {
     super.initState();
-    getPass();
-  }
-
-  Future getPass() async {
-    String? _password = await _storage.read(key: 'pass');
-    setState(() {});
   }
 
   @override
@@ -65,18 +58,19 @@ class _ChangePasswordState extends State<ChangePassword> {
               ),
               ElevatedButton(
                 style: style,
-                onPressed: () {
+                onPressed: () async {
                   if (_passwordControllerFirst.text ==
                       _passwordControllerSecond.text) {
-                    String newPassword = Crypt.sha512(
+                    var localSalt = generateRandomString(32);
+                    var newPassword = Crypt.sha512(
                             _passwordControllerSecond.text.trim(),
                             rounds: 10000,
-                            salt: "BSMIsTheBest")
+                            salt: localSalt)
                         .toString();
-                    _storage.write(key: 'pass', value: newPassword);
-                    setState(() {
-                      _password = newPassword;
-                    });
+                    await _storage.write(key: 'pass', value: newPassword);
+                    await _storage.write(key: 'salt', value: localSalt);
+
+                    setState(() {});
                     Navigator.pop(context);
                     Navigator.pop(context);
                   } else {
@@ -89,7 +83,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                         });
                   }
                 },
-                child: const Text('Save!'),
+                child: const Text('Save'),
               ),
             ]),
       ),
