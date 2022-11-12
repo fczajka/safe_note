@@ -30,6 +30,7 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
     crypt: ^4.2.1
+    crypto: ^3.0.2
     encrypt: ^5.0.1
     flutter_secure_storage: ^6.0.0
     flutter:

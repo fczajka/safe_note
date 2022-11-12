@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:crypt/crypt.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:safe_note/utils.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class ChangePassword extends StatefulWidget {
   const ChangePassword({super.key});
@@ -61,18 +63,19 @@ class _ChangePasswordState extends State<ChangePassword> {
                 onPressed: () async {
                   if (_passwordControllerFirst.text ==
                       _passwordControllerSecond.text) {
-                    var localSalt = generateRandomString(32);
-                    var newPassword = Crypt.sha512(
-                            _passwordControllerSecond.text.trim(),
-                            rounds: 10000,
-                            salt: localSalt)
-                        .toString();
+                    var salt = generateRandomString(32);
+                    var key = utf8.encode(salt);
+                    var bytes =
+                        utf8.encode(_passwordControllerSecond.text.trim());
+                    var hmacSha256 = Hmac(sha256, key);
+                    var digest = hmacSha256.convert(bytes);
+                    var newPassword = digest.toString();
+
                     await _storage.write(key: 'pass', value: newPassword);
-                    await _storage.write(key: 'salt', value: localSalt);
+                    await _storage.write(key: 'salt', value: salt);
 
                     setState(() {});
-                    Navigator.pop(context);
-                    Navigator.pop(context);
+                    Navigator.of(context).popUntil((route) => route.isFirst);
                   } else {
                     showDialog(
                         context: context,

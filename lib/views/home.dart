@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:crypt/crypt.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:safe_note/views/note.dart';
 import 'package:safe_note/utils.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -59,10 +60,13 @@ class _MyHomePageState extends State<MyHomePage> {
                 onPressed: () async {
                   var pass = await _storage.read(key: "pass");
                   var salt = await _storage.read(key: "salt");
-                  if (Crypt.sha512(myController.text.trim(),
-                              rounds: 10000, salt: salt)
-                          .toString() ==
-                      pass) {
+
+                  var key = utf8.encode(salt!);
+                  var bytes = utf8.encode(myController.text.trim());
+                  var hmacSha256 = Hmac(sha256, key);
+                  var digest = hmacSha256.convert(bytes);
+
+                  if (digest.toString() == pass) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const Note()),
@@ -94,12 +98,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: style,
                 child: const Text('Set password'),
                 onPressed: () async {
-                  var localSalt = generateRandomString(32);
-                  var newPassword = Crypt.sha512(myController.text.trim(),
-                          rounds: 10000, salt: localSalt)
-                      .toString();
+                  var salt = generateRandomString(32);
+                  var key = utf8.encode(salt);
+                  var bytes = utf8.encode(myController.text.trim());
+                  var hmacSha256 = Hmac(sha256, key);
+                  var digest = hmacSha256.convert(bytes);
+                  var newPassword = digest.toString();
                   await _storage.write(key: 'pass', value: newPassword);
-                  await _storage.write(key: 'salt', value: localSalt);
+                  await _storage.write(key: 'salt', value: salt);
+
                   setState(() {
                     myController.text = "";
                     _isSet = true;
