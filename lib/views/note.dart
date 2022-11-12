@@ -5,7 +5,8 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 
 class Note extends StatefulWidget {
   final String digest;
-  const Note({super.key, required this.digest});
+  final String note;
+  const Note({super.key, required this.digest, required this.note});
 
   @override
   State<Note> createState() => _NoteState();
@@ -27,17 +28,7 @@ class _NoteState extends State<Note> {
   }
 
   Future getNote() async {
-    var note = await _storage.read(key: 'note');
-
-    var iv = await _storage.read(key: 'iv');
-
-    final cipherKey = encrypt.Key.fromBase16(widget.digest);
-    final encrypter = encrypt.Encrypter(encrypt.AES(cipherKey));
-
-    final decrypted = encrypter.decrypt(encrypt.Encrypted.fromBase64(note!),
-        iv: encrypt.IV.fromBase64(iv!));
-
-    _noteController.text = decrypted;
+    _noteController.text = widget.note;
     _isSet = true;
     setState(() {});
   }

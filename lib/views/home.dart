@@ -61,18 +61,27 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: const Text('Log in'),
                 onPressed: () async {
                   var salt = await _storage.read(key: "salt");
+                  var note = await _storage.read(key: 'note');
+                  var iv = await _storage.read(key: 'iv');
 
                   var key = utf8.encode(salt!);
                   var bytes = utf8.encode(myController.text.trim());
+                  var hmacSha256 = Hmac(sha256, key);
+                  var digest = hmacSha256.convert(bytes);
+
+                  final cipherKey = encrypt.Key.fromBase16(digest.toString());
+                  final encrypter = encrypt.Encrypter(encrypt.AES(cipherKey));
+
                   try {
-                    var hmacSha256 = Hmac(sha256, key);
-                    var digest = hmacSha256.convert(bytes);
+                    final decrypted = encrypter.decrypt(
+                        encrypt.Encrypted.fromBase64(note!),
+                        iv: encrypt.IV.fromBase64(iv!));
 
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                           builder: (context) =>
-                              Note(digest: digest.toString())),
+                              Note(digest: digest.toString(), note: decrypted)),
                     );
                     myController.text = "";
                   } catch (e) {
