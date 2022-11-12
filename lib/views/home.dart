@@ -4,6 +4,7 @@ import 'package:safe_note/views/note.dart';
 import 'package:safe_note/utils.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -16,6 +17,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final _storage = const FlutterSecureStorage();
   bool _isSet = false;
+  var pass = "";
 
   @override
   void initState() {
@@ -58,21 +60,22 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: style,
                 child: const Text('Log in'),
                 onPressed: () async {
-                  var pass = await _storage.read(key: "pass");
                   var salt = await _storage.read(key: "salt");
 
                   var key = utf8.encode(salt!);
                   var bytes = utf8.encode(myController.text.trim());
-                  var hmacSha256 = Hmac(sha256, key);
-                  var digest = hmacSha256.convert(bytes);
+                  try {
+                    var hmacSha256 = Hmac(sha256, key);
+                    var digest = hmacSha256.convert(bytes);
 
-                  if (digest.toString() == pass) {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const Note()),
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              Note(digest: digest.toString())),
                     );
                     myController.text = "";
-                  } else {
+                  } catch (e) {
                     myController.text = "";
                     showDialog(
                         context: context,
@@ -104,8 +107,16 @@ class _MyHomePageState extends State<MyHomePage> {
                   var hmacSha256 = Hmac(sha256, key);
                   var digest = hmacSha256.convert(bytes);
                   var newPassword = digest.toString();
-                  await _storage.write(key: 'pass', value: newPassword);
                   await _storage.write(key: 'salt', value: salt);
+
+                  final plainText = "Enter your note here";
+                  final cipherKey = encrypt.Key.fromBase16(newPassword);
+                  final iv = encrypt.IV.fromSecureRandom(16);
+                  final encrypter = encrypt.Encrypter(encrypt.AES(cipherKey));
+                  final encrypted = encrypter.encrypt(plainText, iv: iv);
+
+                  await _storage.write(key: "note", value: encrypted.base64);
+                  await _storage.write(key: "iv", value: iv.base64);
 
                   setState(() {
                     myController.text = "";

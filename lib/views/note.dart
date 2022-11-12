@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:safe_note/views/changePassword.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 class Note extends StatefulWidget {
-  const Note({super.key});
+  final String digest;
+  const Note({super.key, required this.digest});
 
   @override
   State<Note> createState() => _NoteState();
@@ -25,13 +27,18 @@ class _NoteState extends State<Note> {
   }
 
   Future getNote() async {
-    String? note = await _storage.read(key: 'note');
-    if (note == null) {
-      _isSet = false;
-    } else {
-      _noteController.text = note;
-      _isSet = true;
-    }
+    var note = await _storage.read(key: 'note');
+
+    var iv = await _storage.read(key: 'iv');
+
+    final cipherKey = encrypt.Key.fromBase16(widget.digest);
+    final encrypter = encrypt.Encrypter(encrypt.AES(cipherKey));
+
+    final decrypted = encrypter.decrypt(encrypt.Encrypted.fromBase64(note!),
+        iv: encrypt.IV.fromBase64(iv!));
+
+    _noteController.text = decrypted;
+    _isSet = true;
     setState(() {});
   }
 
@@ -56,8 +63,15 @@ class _NoteState extends State<Note> {
             ),
             ElevatedButton(
               style: style,
-              onPressed: () {
-                _storage.write(key: 'note', value: _noteController.text);
+              onPressed: () async {
+                var iv = await _storage.read(key: 'iv');
+                var password = widget.digest;
+
+                final cipherKey = encrypt.Key.fromBase16(password);
+                final encrypter = encrypt.Encrypter(encrypt.AES(cipherKey));
+                final encrypted = encrypter.encrypt(_noteController.text,
+                    iv: encrypt.IV.fromBase64(iv!));
+                _storage.write(key: 'note', value: encrypted.base64);
                 setState(() {
                   _isSet = true;
                 });
@@ -71,7 +85,8 @@ class _NoteState extends State<Note> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ChangePassword()),
+            MaterialPageRoute(
+                builder: (context) => ChangePassword(pass: widget.digest)),
           );
         },
         backgroundColor: Colors.blue,
