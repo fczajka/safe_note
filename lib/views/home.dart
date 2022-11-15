@@ -22,12 +22,23 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    getNote();
   }
 
   @override
   void dispose() {
     myController.dispose();
     super.dispose();
+  }
+
+  Future getNote() async {
+    String? note = await _storage.read(key: 'note');
+    if (note == null) {
+      _isSet = false;
+    } else {
+      _isSet = true;
+    }
+    setState(() {});
   }
 
   final ButtonStyle style = ElevatedButton.styleFrom(
