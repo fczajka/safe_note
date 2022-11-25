@@ -5,6 +5,7 @@ import 'package:safe_note/utils.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:biometric_storage/biometric_storage.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -18,6 +19,9 @@ class _MyHomePageState extends State<MyHomePage> {
   final _storage = const FlutterSecureStorage();
   bool _isSet = false;
   var pass = "";
+  bool _isDecrypted = false;
+
+  final TextEditingController _noteController = TextEditingController();
 
   @override
   void initState() {
@@ -27,8 +31,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
-    myController.dispose();
     super.dispose();
+    _noteController.text = '';
+    _noteController.dispose();
   }
 
   Future getNote() async {
@@ -41,111 +46,148 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
+  Future saveNote() async {
+    final response = await BiometricStorage().canAuthenticate();
+    if (response != CanAuthenticateResponse.success) {
+      showDialog(
+          context: context,
+          builder: (context) {
+            return const AlertDialog(
+              content: Text("Something is wrong with bio"),
+            );
+          });
+      return;
+    }
+
+    final store = await BiometricStorage().getStorage('note');
+
+    try {
+      await store.write(_noteController.text.trim());
+    } on AuthException catch (e) {
+      switch (e.code) {
+        case (AuthExceptionCode.userCanceled):
+          showDialog(
+              context: context,
+              builder: (context) {
+                return const AlertDialog(
+                  content: Text("Use your finger"),
+                );
+              });
+          break;
+        case (AuthExceptionCode.unknown):
+          showDialog(
+              context: context,
+              builder: (context) {
+                print(e.code);
+                print(e.message);
+                return const AlertDialog(
+                  content: Text("Too many attempts, try again later"),
+                );
+              });
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+
+    await showDialog(
+        context: context,
+        builder: (context) {
+          return const AlertDialog(
+            content: Text("Note has been saved"),
+          );
+        });
+
+    setState(() {
+      _isDecrypted = false;
+    });
+  }
+
+  Future readNote() async {
+    final response = await BiometricStorage().canAuthenticate();
+    if (response != CanAuthenticateResponse.success) {
+      showDialog(
+          context: context,
+          builder: (context) {
+            return const AlertDialog(
+              content: Text("Something is wrong with bio"),
+            );
+          });
+    }
+    final store = await BiometricStorage().getStorage('note');
+    final String? data;
+    try {
+      data = await store.read();
+      _noteController.text = data as String;
+    } on AuthException catch (e) {
+      showDialog(
+          context: context,
+          builder: (context) {
+            return const AlertDialog(
+              content: Text("Wrong password"),
+            );
+          });
+    }
+    setState(() {
+      _isDecrypted = true;
+    });
+  }
+
   final ButtonStyle style = ElevatedButton.styleFrom(
       textStyle: const TextStyle(fontSize: 20),
       padding: const EdgeInsets.all(16));
 
-  final myController = TextEditingController();
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (_isSet) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: TextField(
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Enter p@\$\$w0rd',
+    return GestureDetector(
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: _isDecrypted
+            ? Scaffold(
+                appBar: AppBar(
+                  title: Text(widget.title),
                 ),
-                controller: myController,
-              ),
-            ),
-            ElevatedButton(
-                style: style,
-                child: const Text('Log in'),
-                onPressed: () async {
-                  var salt = await _storage.read(key: "salt");
-                  var note = await _storage.read(key: 'note');
-                  var iv = await _storage.read(key: 'iv');
-
-                  var key = utf8.encode(salt!);
-                  var bytes = utf8.encode(myController.text.trim());
-                  var hmacSha256 = Hmac(sha256, key);
-                  var digest = hmacSha256.convert(bytes);
-
-                  final cipherKey = encrypt.Key.fromBase16(digest.toString());
-                  final encrypter = encrypt.Encrypter(encrypt.AES(cipherKey));
-
-                  try {
-                    final decrypted = encrypter.decrypt(
-                        encrypt.Encrypted.fromBase64(note!),
-                        iv: encrypt.IV.fromBase64(iv!));
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              Note(digest: digest.toString(), note: decrypted)),
-                    );
-                    myController.text = "";
-                  } catch (e) {
-                    myController.text = "";
-                    showDialog(
-                        context: context,
-                        builder: (context) {
-                          return const AlertDialog(
-                            content: Text("Wrong password"),
-                          );
-                        });
-                  }
-                })
-          ] else ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: TextField(
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Set p@\$\$w0rd',
+                body: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Column(children: [
+                    TextField(
+                      controller: _noteController,
+                      maxLines: 8,
+                      decoration: const InputDecoration.collapsed(
+                        hintText: "Your note",
+                        hintStyle: TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 16),
+                        child: ElevatedButton.icon(
+                          style: style,
+                          icon: const Icon(Icons.fingerprint),
+                          onPressed: saveNote,
+                          label: const Text('Save note'),
+                        )),
+                  ]),
                 ),
-                controller: myController,
-              ),
-            ),
-            ElevatedButton(
-                style: style,
-                child: const Text('Set password'),
-                onPressed: () async {
-                  var salt = generateRandomString(32);
-                  var key = utf8.encode(salt);
-                  var bytes = utf8.encode(myController.text.trim());
-                  var hmacSha256 = Hmac(sha256, key);
-                  var digest = hmacSha256.convert(bytes);
-                  var newPassword = digest.toString();
-                  await _storage.write(key: 'salt', value: salt);
-
-                  final plainText = "Enter your note here";
-                  final cipherKey = encrypt.Key.fromBase16(newPassword);
-                  final iv = encrypt.IV.fromSecureRandom(16);
-                  final encrypter = encrypt.Encrypter(encrypt.AES(cipherKey));
-                  final encrypted = encrypter.encrypt(plainText, iv: iv);
-
-                  await _storage.write(key: "note", value: encrypted.base64);
-                  await _storage.write(key: "iv", value: iv.base64);
-
-                  setState(() {
-                    myController.text = "";
-                    _isSet = true;
-                  });
-                }),
-          ],
-        ],
-      ),
-    );
+              )
+            : Scaffold(
+                appBar: AppBar(
+                  title: Text(widget.title),
+                ),
+                body: Center(
+                  child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 16),
+                      child: ElevatedButton.icon(
+                        style: style,
+                        icon: const Icon(Icons.fingerprint),
+                        onPressed: readNote,
+                        label: const Text('Log in'),
+                      )),
+                ),
+              ));
   }
 }
