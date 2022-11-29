@@ -117,10 +117,13 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     final store = await BiometricStorage().getStorage('note');
     final String? data;
+    bool works;
     try {
       data = await store.read();
       _noteController.text = data as String;
+      works = true;
     } on AuthException catch (e) {
+      works = false;
       showDialog(
           context: context,
           builder: (context) {
@@ -130,7 +133,7 @@ class _MyHomePageState extends State<MyHomePage> {
           });
     }
     setState(() {
-      _isDecrypted = true;
+      _isDecrypted = works;
     });
   }
 
